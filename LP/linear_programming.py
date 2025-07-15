@@ -6,7 +6,7 @@ n = 1000
 # Column value
 d = 10
 # x_i is the i-1th row in the x matrix
-x = np.random.randn(n,d)
+x = np.random.uniform(low=-2, high=2, size=(n, 2))
 # This is a convex function, y = ||x||^2
 y = np.apply_along_axis(lambda l: np.dot(l,l), 1, x)
 # This is another convex function, l1_norm(x+1)
