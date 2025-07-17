@@ -7,6 +7,21 @@ n = 1000
 d = 10
 # x_i is the i-1th row in the x matrix
 x = np.random.uniform(low=-2, high=2, size=(n, 2))
+
+# ALTERNATIVE DISTRIBUTIONS TO GENERATE THE DATA WITH:
+# Laplace (heavy-tailed):
+# x = np.random.laplace(loc=0, scale=1, size=(n, 2))
+# Exponential (positive quadrant only):
+# x = np.random.exponential(scale=1.0, size=(n, 2))
+# Beta (skewed bounded in [0,1]):
+# x = np.random.beta(a=2, b=5, size=(n, 2))
+# Binomial (discrete integers):
+# x = np.random.binomial(n=10, p=0.5, size=(n, 2))
+# Chi-squared (right-skewed):
+# x = np.random.chisquare(df=3, size=(n, 2))
+# Uniform on a unit disk (polar coords):
+# x = np.random.randn(n, 2); x /= np.linalg.norm(x, axis=1, keepdims=True)
+
 # This is a convex function, y = ||x||^2
 y = np.apply_along_axis(lambda l: np.dot(l,l), 1, x)
 # This is another convex function, l1_norm(x+1)
