@@ -4,8 +4,8 @@ import numpy as np
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-from .model import NormalizingFlow
-from .distributions import get_base_distribution, get_target_distribution_samples
+from model import NormalizingFlow
+from distributions import get_base_distribution, get_target_distribution_samples
 
 def train_and_evaluate():
     # --- Hyperparameters ---

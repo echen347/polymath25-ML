@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from .layers import AffineCouplingLayer
+from layers import AffineCouplingLayer
 
 class NormalizingFlow(nn.Module):
     """
