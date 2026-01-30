@@ -20,14 +20,15 @@ class ICNN(nn.Module):
         self.Wz_layers = nn.ModuleList()
         self.b = nn.ParameterList()
 
+
         prev_dim = 0
         for idx, hidden_dim in enumerate(hidden_dims):
             wx = nn.Linear(n_dim, hidden_dim)
-            # For the first layer, there is no previous z; use a placeholder that won't be used.
-            if idx == 0:
-                wz = nn.Identity()
-            else:
-                wz = nn.Linear(prev_dim, hidden_dim)
+            wz = nn.Linear(prev_dim, hidden_dim)
+
+            if idx==0:
+                with torch.no_grad():
+                    wz.weight.zero_()
 
             self.Wx_layers.append(wx)
             self.Wz_layers.append(wz)
@@ -94,10 +95,8 @@ class DeepConvexFlow(nn.Module):
             self.icnn = icnn
             self.beta = nn.ParameterList([nn.Parameter(torch.tensor(bias_w1, dtype=torch.float32))])
 
-        # CHANGED: Parameterized positive quadratic weight via softplus(w0) ~= w0_scale at init
-        self.w0 = torch.nn.Parameter(
-            torch.log(torch.exp(torch.tensor(w0_scale, dtype=torch.float32)) - 1.0)
-        )
+        # CHANGED: Small fixed quadratic term (0.1 instead of 1.0)
+        self.w0 = torch.nn.Parameter(torch.log(torch.exp(torch.tensor(1)) - 1))
 
     @torch.no_grad()
     def set_active(self, count: int):
@@ -105,9 +104,8 @@ class DeepConvexFlow(nn.Module):
 
     def get_potential(self, x: torch.Tensor) -> torch.Tensor:
         n = x.shape[0]
-        # CHANGED: Smaller quadratic regularization (ensure positivity via softplus)
-        quad_weight = F.softplus(self.w0)
-        quad = quad_weight * (x.reshape(n, -1).pow(2).sum(dim=1, keepdim=True) / 2.0)
+        # CHANGED: Smaller quadratic regularization
+        quad = self.w0 * (x.reshape(n, -1).pow(2).sum(dim=1, keepdim=True) / 2.0)
 
         if self.n_icnns > 1:
             icnn_weighted_sum = 0.0
