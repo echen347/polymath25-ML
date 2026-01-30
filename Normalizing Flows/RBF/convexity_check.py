@@ -124,7 +124,7 @@ def reduce_beta_for_convexity(
     flow,
     x_data: np.ndarray,
     beta: float,
-    beta_reduction_factor: float = 1.5,
+    beta_reduction_factor: float = 2.0,
     max_reductions: int = 10,
     n_check_samples: Optional[int] = None,
     tol: float = 1e-8,

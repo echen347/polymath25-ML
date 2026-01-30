@@ -80,8 +80,8 @@ class RadialBasisFlow(nn.Module):
         n_steps: int = 1000,
         use_convexity_check: bool = False,
         convexity_check_samples: Optional[int] = None,
-        beta_reduction_factor: float = 1.5,
-        beta_min_floor: Optional[float] = 0.01,
+        beta_reduction_factor: float = 2.0,
+        beta_min_floor: Optional[float] = None,
     ):
         """
         Fit the normalizing flow to data.
