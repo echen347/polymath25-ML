@@ -18,4 +18,24 @@ def l2_test(true_samples: np.ndarray, generated_samples: np.ndarray) -> float:
     Computes the L2 distance between the true samples and generated samples.
     Both inputs should be of shape (n_samples, n_dim).
     """
-    return np.mean(np.linalg.norm(true_samples - generated_samples, axis=1))
+    diff = true_samples - generated_samples
+    l2_distance = np.mean(np.sum(np.abs(diff), axis=1))
+    return l2_distance
+
+def plot_kl(kl_history: list[float], title: str = "KL Divergence over Epochs"):
+    plt.figure(figsize=(8,5))
+    plt.plot(kl_history)
+    plt.title(title)
+    plt.xlabel("Epoch")
+    plt.ylabel("KL Divergence")
+    plt.grid()
+    plt.show()
+
+def plot_l2(l2_history: list[float], title: str = "L2 Distance over Epochs"):
+    plt.figure(figsize=(8,5))
+    plt.plot(l2_history)
+    plt.title(title)
+    plt.xlabel("Epoch")
+    plt.ylabel("L2 Distance")
+    plt.grid()
+    plt.show()

@@ -4,7 +4,7 @@ import torch.nn.functional as F
 from torch.utils.data import TensorDataset, DataLoader
 import matplotlib.pyplot as plt
 from .models import DeepConvexFlow
-
+from .tests import plot_samples, l2_test
 def _set_requires_grad(params, requires_grad: bool):
     for p in params:
         p.requires_grad = requires_grad
@@ -18,6 +18,7 @@ def _enforce_icnn_constraints(model):
 
 def train_stepwise(
     X,
+    S,
     model: DeepConvexFlow,
     *,
     batch_size: int = 500,
@@ -60,6 +61,8 @@ def train_stepwise(
         torch.zeros(flat_dim, device=device),
         torch.eye(flat_dim, device=device),
     )
+    kl_history = []
+    l2_history = []
 
     # Sample base distribution for visualization
     S_viz = None
@@ -67,42 +70,63 @@ def train_stepwise(
         S_viz = base.sample((n_viz_samples,))
 
     def make_optimizer(parameters, lr_val):
-        return torch.optim.AdamW(parameters, lr=lr_val, weight_decay=1e-5)
+        return torch.optim.Adam(parameters, lr=lr_val)
 
     def visualize_transformations(stage_name: str):
         """Visualize forward and inverse transformations"""
         if S_viz is None:
             return
+        if S_viz.ndim == 2:
             
-        model.eval()
-        with torch.no_grad():
-            x_recon = model.reverse(S_viz)
-            x_recon = x_recon.detach().cpu().numpy()
-            X_np = X_tensor.cpu().numpy()
-            
-            plt.figure(figsize=(12, 5))
-            plt.scatter(X_np[:, 0], X_np[:, 1], alpha=0.3, label='Data X')
-            plt.scatter(x_recon[:, 0], x_recon[:, 1], alpha=0.3, label='Reconstructed X from S')
-            plt.title(f"Reconstruction after {stage_name}")
-            plt.legend()
-            plt.show()
+            model.eval()
+            with torch.no_grad():
+                x_recon = model.reverse(S_viz)
+                x_recon = x_recon.detach().cpu().numpy()
+                X_np = X_tensor.cpu().numpy()
+                
+                plt.figure(figsize=(12, 5))
+                plt.scatter(X_np[:, 0], X_np[:, 1], alpha=0.3, label='Data X')
+                plt.scatter(x_recon[:, 0], x_recon[:, 1], alpha=0.3, label='Reconstructed X from S')
+                plt.title(f"Reconstruction after {stage_name}")
+                plt.legend()
+                plt.show()
+        if S_viz.ndim == 3:
+            model.eval()
+            with torch.no_grad():
+                x_recon = model.reverse(S_viz)
+                x_recon = x_recon.detach().cpu().numpy()
+                X_np = X_tensor.cpu().numpy()
+                
+                fig = plt.figure(figsize=(12, 5))
+                ax = fig.add_subplot(111, projection='3d')
+                ax.scatter(X_np[:, 0], X_np[:, 1], X_np[:, 2], alpha=0.3, label='Data X')
+                ax.scatter(x_recon[:, 0], x_recon[:, 1], x_recon[:, 2], alpha=0.3, label='Reconstructed X from S')
+                ax.set_title(f"3D Reconstruction after {stage_name}")
+                ax.legend()
+                plt.show()
         
         model.train()
 
     def run_epochs(epochs, stage_name, parameters):
         model.train()
         optimizer = make_optimizer(parameters, lr)
-        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs)
+        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=epochs // 2, gamma=0.1)
         
         for epoch in range(1, epochs + 1):
             total_loss, total_count = 0.0, 0
             for (xb,) in loader:
+                loss = 0.0
                 y, logdet = model.forward_transform(xb, logdet=0.0)
                 logp0 = base.log_prob(y.reshape(y.shape[0], -1))
                 loss = -(logp0 + logdet).mean()
 
                 optimizer.zero_grad(set_to_none=True)
                 loss.backward()
+                
+                kl_history.append(loss.item())
+
+                samples = model.reverse(torch.tensor(S, dtype=torch.float32)).cpu().detach().numpy()
+                l2_history.append(l2_test(X, samples))
                 
                 torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=10.0)
                 
@@ -124,7 +148,7 @@ def train_stepwise(
             
             if epoch % print_every == 0:
                 avg_loss = total_loss / total_count
-                print(f"[{stage_name}] Epoch {epoch:03d}/{epochs:03d} - NLL = {avg_loss:.6f}")
+                print(f"[{stage_name}] Epoch {epoch:03d}/{epochs:03d} - NLL = {avg_loss:.6f}, Beta = {[F.softplus(b).item() for b in model.beta]}")
 
     print("=" * 80)
     print("Stepwise Training")
@@ -132,6 +156,7 @@ def train_stepwise(
 
     for k in range(model.n_icnns):
         print(f"\nStage {k+1}: Training ICNN {k}")
+
         
         model.set_active(k + 1)
         _set_requires_grad(model.parameters(), False)
@@ -189,3 +214,4 @@ def train_stepwise(
 
         if visualize:
             visualize_transformations("Final Model")
+    return kl_history, l2_history

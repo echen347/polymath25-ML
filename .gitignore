@@ -10,3 +10,4 @@ anaconda_projects/db/project_filebrowser.db
 /.virtual_documents
 Normalizing Flows/.DS_Store
 .DS_Store
+__pycache__/

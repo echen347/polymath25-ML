@@ -37,11 +37,37 @@ def inv_T(tx_ty):
         results.append(sol.x)
     
     return np.array(results)
+
+def T_3d(xyz):
+    # Phi3 = X^4 + Y^4 + Z^4 
+    # T3 = <4 * X^3, 4 * Y^3, 4 * Z^3>
+    x = xyz[:, 0]
+    y = xyz[:, 1]
+    z = xyz[:, 2]
+    Tx = 4 * x**3
+    Ty = 4 * y**3
+    Tz = 4 * z**3
+    return np.stack([Tx, Ty, Tz], axis=1)
+
+def T_inv_3d(tx_ty_tz):
+    if tx_ty_tz.ndim == 1:
+        tx_ty_tz = tx_ty_tz.reshape(1, -1)
     
-def get_data(n_samples: int = 1000) -> np.ndarray:
-    base = torch.distributions.MultivariateNormal(torch.zeros(2, device=device), torch.eye(2, device=device))
+    results = []
+    for i in range(len(tx_ty_tz)):
+        x0 = tx_ty_tz[i].copy()  # initial guess
+        def f(xyz):
+            xyz_3d = xyz.reshape(1, -1)
+            return (T_3d(xyz_3d) - tx_ty_tz[i]).ravel()
+        sol = root(f, x0)
+        results.append(sol.x)
+    
+    return np.array(results)
+    
+def get_data(n_samples: int = 1000, dim: int = 2, T_inv=None) -> np.ndarray:
+    base = torch.distributions.MultivariateNormal(torch.zeros(dim, device=device), torch.eye(dim, device=device))
     S = base.sample((n_samples,)).cpu().numpy()
-    X = inv_T(S)
+    X = T_inv(S)
     np.savez('./X_data.npz', X=X)
     return S, X
 
